@@ -1,0 +1,696 @@
+```html
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArenaPredict AI - Analisis & Prediksi Pertandingan Olahraga</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                            950: '#022c22'
+                        },
+                        accent: {
+                            500: '#6366f1',
+                            600: '#4f46e5'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Font Inter & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-effect {
+            box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.2);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-slate-950">
+
+    <!-- Header / Navbar -->
+    <header class="glass-panel sticky top-0 z-40 border-b border-slate-800 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-tr from-brand-600 to-accent-500 p-2.5 rounded-xl text-white shadow-lg shadow-brand-500/20">
+                <i class="fa-solid fa-brain text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent">
+                    ArenaPredict<span class="text-brand-500">.AI</span>
+                </h1>
+                <p class="text-[11px] text-slate-400">Analisis Pertandingan Berbasis Kecerdasan Buatan</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <!-- Modal API Key Toggle Button -->
+            <button onclick="toggleKeyModal()" id="key-status-btn" class="text-xs bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 px-3 py-2 rounded-xl font-medium transition flex items-center space-x-2">
+                <i class="fa-solid fa-key"></i>
+                <span id="key-status-text" class="hidden sm:inline">Set API Key</span>
+            </button>
+            <button onclick="loadPreset('football')" class="text-xs bg-slate-900 hover:bg-slate-800 text-brand-400 border border-brand-500/30 px-3 py-2 rounded-xl font-medium transition flex items-center space-x-1.5 shadow-sm">
+                <i class="fa-solid fa-bolt text-brand-400"></i>
+                <span class="hidden sm:inline">Contoh Cepat</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Modal Konfigurasi API Key -->
+    <div id="api-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
+        <div class="glass-panel p-6 rounded-2xl max-w-md w-full mx-4 border border-slate-700 shadow-2xl space-y-4 animate-fade-in">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white flex items-center text-base">
+                    <i class="fa-solid fa-key text-amber-400 mr-2"></i>Pengaturan API Key AI
+                </h3>
+                <button onclick="toggleKeyModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+                Masukkan API Key milik Anda. Key disimpan secara lokal di peramban (<span class="text-brand-400 font-mono">localStorage</span>) dan tidak pernah dikirim ke server luar selain langsung ke endpoint API.
+            </p>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Penyedia API / Model</label>
+                    <select id="api-provider" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500">
+                        <option value="gemini" selected>Google Gemini API (gemini-3-flash-preview / 1.5-flash)</option>
+                        <option value="openai">OpenAI API (gpt-4o-mini / gpt-3.5-turbo)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">API Key</label>
+                    <div class="relative">
+                        <input type="password" id="user-api-key" placeholder="AIzaSy... / sk-proj-..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500">
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs">
+                            <i id="eye-icon" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 pt-2">
+                <button onclick="saveApiKey()" class="flex-1 bg-brand-600 hover:bg-brand-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition">
+                    Simpan Key
+                </button>
+                <button onclick="clearApiKey()" class="bg-slate-900 hover:bg-rose-950/40 text-rose-400 border border-rose-900/50 px-4 py-2.5 rounded-xl text-xs transition">
+                    Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Column: Input Form (7 cols) -->
+        <section class="lg:col-span-7 space-y-6">
+            
+            <!-- Sport Selection Cards -->
+            <div class="glass-panel p-5 rounded-2xl shadow-xl">
+                <label class="block text-xs font-semibold text-slate-300 mb-3 flex items-center justify-between uppercase tracking-wider">
+                    <span><i class="fa-solid fa-trophy text-brand-500 mr-2"></i>Pilih Cabang Olahraga</span>
+                    <span class="text-[11px] text-slate-400 font-normal">Format disesuaikan otomatis</span>
+                </label>
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+                    <button type="button" onclick="setSport('Sepak Bola')" id="sport-Sepak-Bola" class="sport-btn p-3 rounded-xl border border-brand-500 bg-brand-500/10 text-brand-300 flex flex-col items-center justify-center space-y-1.5 transition font-medium text-xs">
+                        <i class="fa-solid fa-futbol text-lg"></i>
+                        <span>Sepak Bola</span>
+                    </button>
+                    <button type="button" onclick="setSport('Basket')" id="sport-Basket" class="sport-btn p-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 flex flex-col items-center justify-center space-y-1.5 transition font-medium text-xs">
+                        <i class="fa-solid fa-basketball text-lg"></i>
+                        <span>Basket</span>
+                    </button>
+                    <button type="button" onclick="setSport('Bulu Tangkis')" id="sport-Bulu-Tangkis" class="sport-btn p-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 flex flex-col items-center justify-center space-y-1.5 transition font-medium text-xs">
+                        <i class="fa-solid fa-shuttlecock text-lg"></i>
+                        <span>Bulu Tangkis</span>
+                    </button>
+                    <button type="button" onclick="setSport('Voli')" id="sport-Voli" class="sport-btn p-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 flex flex-col items-center justify-center space-y-1.5 transition font-medium text-xs">
+                        <i class="fa-solid fa-volleyball text-lg"></i>
+                        <span>Voli</span>
+                    </button>
+                    <button type="button" onclick="setSport('Tenis')" id="sport-Tenis" class="sport-btn p-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 flex flex-col items-center justify-center space-y-1.5 transition font-medium text-xs">
+                        <i class="fa-solid fa-baseball-bat-ball text-lg"></i>
+                        <span>Tenis</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Team & Match Info Form -->
+            <div class="glass-panel p-6 rounded-2xl shadow-xl space-y-5">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3.5">
+                    <h2 class="text-base font-bold text-white flex items-center">
+                        <i class="fa-solid fa-sliders text-accent-500 mr-2"></i>Parameter & Informasi Pertandingan
+                    </h2>
+                    <span id="current-sport-badge" class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">Sepak Bola</span>
+                </div>
+
+                <!-- Teams Name Input -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Tim / Pemain A <span class="text-rose-400">*</span></label>
+                        <input type="text" id="teamA" placeholder="Contoh: Real Madrid" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Tim / Pemain B <span class="text-rose-400">*</span></label>
+                        <input type="text" id="teamB" placeholder="Contoh: Barcelona" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <!-- Match Location & H2H -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Lokasi / Venue</label>
+                        <select id="matchLocation" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500">
+                            <option value="Kandang Tim A">Kandang Tim/Pemain A</option>
+                            <option value="Kandang Tim B">Kandang Tim/Pemain B</option>
+                            <option value="Tempat Netral" selected>Tempat Netral / Lapangan Terbuka Netral</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Rekor Pertemuan (H2H)</label>
+                        <input type="text" id="h2h" placeholder="Contoh: Tim A menang 3x dari 5 laga terakhir" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <!-- Recent Form -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Form 5 Laga Terakhir Tim A</label>
+                        <input type="text" id="formA" placeholder="Contoh: Menang-Menang-Seri-Kalah-Menang" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Form 5 Laga Terakhir Tim B</label>
+                        <input type="text" id="formB" placeholder="Contoh: Seri-Kalah-Menang-Kalah-Kalah" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <!-- Injuries & Additional Details -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Kondisi Pemain / Cedera</label>
+                        <textarea id="injuries" rows="2" placeholder="Contoh: Striker utama Tim B cedera lutut..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 resize-none"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">Catatan Tambahan / Cuaca / Taktik</label>
+                        <textarea id="notes" rows="2" placeholder="Contoh: Lapangan basah, Tim A baru beristirahat 2 hari..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 resize-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="pt-2 flex items-center space-x-3">
+                    <button type="button" onclick="analyzeWithAI()" id="btn-analyze" class="flex-1 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-slate-950 font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-brand-500/25 transition duration-200 flex items-center justify-center space-x-2 text-xs uppercase tracking-wider cursor-pointer">
+                        <i class="fa-solid fa-sparkles text-sm"></i>
+                        <span id="btn-analyze-text">Analisis Pertandingan dengan AI</span>
+                    </button>
+                    <button type="button" onclick="resetForm()" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 py-3.5 px-4 rounded-xl transition text-xs font-medium flex items-center justify-center">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Analysis Results & Visualization (5 cols) -->
+        <section class="lg:col-span-5 space-y-6">
+            
+            <!-- Default Placeholder State -->
+            <div id="result-placeholder" class="glass-panel p-8 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center min-h-[460px]">
+                <div class="w-16 h-16 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-brand-500 text-2xl mb-4 shadow-inner">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <h3 class="text-base font-bold text-white mb-1.5">Siap Menganalisis Pertandingan</h3>
+                <p class="text-xs text-slate-400 max-w-sm leading-relaxed">
+                    Lengkapi nama tim dan statistik di sebelah kiri, pastikan API Key telah terpasang, lalu klik <span class="text-brand-400 font-semibold">"Analisis Pertandingan dengan AI"</span>.
+                </p>
+            </div>
+
+            <!-- Spinner / Loading State -->
+            <div id="result-loading" class="glass-panel p-10 rounded-2xl shadow-xl flex flex-col items-center justify-center text-center min-h-[460px] hidden">
+                <div class="relative w-16 h-16 mb-4 flex items-center justify-center">
+                    <div class="absolute inset-0 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin"></div>
+                    <i class="fa-solid fa-brain text-brand-400 text-xl animate-pulse"></i>
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Menghubungkan ke Mesin AI...</h4>
+                <p class="text-xs text-slate-400 max-w-xs">Mengevaluasi bentuk performa, statistik H2H, serta taktik untuk menghasilkan estimasi yang presisi.</p>
+            </div>
+
+            <!-- Active Analysis Results Container (Hidden by default) -->
+            <div id="result-container" class="hidden glass-panel p-6 rounded-2xl shadow-xl space-y-5 animate-fade-in border-brand-500/30">
+                
+                <!-- Header Results -->
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3.5">
+                    <div>
+                        <span id="res-sport-tag" class="text-[10px] uppercase tracking-wider font-bold text-brand-400 bg-brand-500/10 px-2.5 py-1 rounded-md border border-brand-500/20">Sepak Bola</span>
+                        <h3 class="text-lg font-extrabold text-white mt-1.5" id="res-match-title">Real Madrid vs Barcelona</h3>
+                    </div>
+                    <button onclick="window.print()" class="text-slate-400 hover:text-white bg-slate-900 p-2.5 rounded-xl border border-slate-800 transition" title="Cetak Hasil">
+                        <i class="fa-solid fa-print text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Predicted Score Card -->
+                <div class="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-2xl border border-slate-800 text-center relative overflow-hidden glow-effect">
+                    <div class="absolute top-0 right-0 bg-brand-500/10 text-brand-400 text-[10px] font-bold px-3 py-1 rounded-bl-xl border-l border-b border-brand-500/20">
+                        ESTIMASI HASIL AI
+                    </div>
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block mb-2 tracking-widest">Perkiraan Skor Akhir</span>
+                    <div class="flex items-center justify-center space-x-3 my-1">
+                        <div class="text-right flex-1">
+                            <span class="block text-xs font-semibold text-slate-300 truncate max-w-[110px] ml-auto" id="res-teamA-name">Real Madrid</span>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-700 px-4 py-2.5 rounded-2xl shadow-inner">
+                            <span class="text-2xl sm:text-3xl font-black text-brand-400 tracking-wider" id="res-score">2 - 1</span>
+                        </div>
+                        <div class="text-left flex-1">
+                            <span class="block text-xs font-semibold text-slate-300 truncate max-w-[110px]" id="res-teamB-name">Barcelona</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Win / Draw / Loss Probabilities -->
+                <div class="space-y-2.5">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                        <span><i class="fa-solid fa-chart-pie text-brand-500 mr-1.5"></i>Peluang Pertandingan</span>
+                        <span class="text-slate-400 text-[10px]" id="confidence-badge">Keyakinan: 75%</span>
+                    </label>
+                    <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 space-y-2.5">
+                        <!-- Bar Item A -->
+                        <div>
+                            <div class="flex justify-between text-xs font-medium mb-1">
+                                <span id="prob-label-A" class="text-slate-300">Menang Tim A</span>
+                                <span id="prob-val-A" class="text-brand-400 font-bold">50%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div id="bar-A" class="bg-brand-500 h-full rounded-full transition-all duration-500" style="width: 50%;"></div>
+                            </div>
+                        </div>
+                        <!-- Bar Item Draw -->
+                        <div id="container-draw">
+                            <div class="flex justify-between text-xs font-medium mb-1">
+                                <span id="label-middle" class="text-slate-300">Seri / Imbang</span>
+                                <span id="prob-val-Draw" class="text-amber-400 font-bold">25%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div id="bar-Draw" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 25%;"></div>
+                            </div>
+                        </div>
+                        <!-- Bar Item B -->
+                        <div>
+                            <div class="flex justify-between text-xs font-medium mb-1">
+                                <span id="prob-label-B" class="text-slate-300">Menang Tim B</span>
+                                <span id="prob-val-B" class="text-indigo-400 font-bold">25%</span>
+                            </div>
+                            <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                                <div id="bar-B" class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: 25%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Factors Bullet Points -->
+                <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800">
+                    <span class="text-xs uppercase font-semibold text-slate-400 block mb-2">Faktor Penentu Utama</span>
+                    <ul class="space-y-1 text-xs text-slate-300" id="key-factors-list">
+                        <!-- Loaded dynamically -->
+                    </ul>
+                </div>
+
+                <!-- Deep Narrative Analysis -->
+                <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 space-y-1">
+                    <span class="text-xs uppercase font-semibold text-slate-400 block">Analisis Taktik & Kondisi</span>
+                    <p class="text-xs text-slate-300 leading-relaxed italic" id="res-narrative">
+                        <!-- Loaded dynamically -->
+                    </p>
+                </div>
+
+                <!-- Disclaimer -->
+                <div class="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-start space-x-2.5 text-[11px] text-amber-200/90">
+                    <i class="fa-solid fa-shield-cat text-amber-400 text-sm mt-0.5"></i>
+                    <div>
+                        <span class="font-semibold text-amber-400">Penyangkalan Resmi (Disclaimer):</span>
+                        Hasil ini adalah perkiraan berbasis analisis kecerdasan buatan (AI) dan data statistik yang Anda masukkan, bukan jaminan mutlak atau ajakan taruhan.
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Peringatan / Notification -->
+    <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden">
+        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full mx-4 border border-slate-700 shadow-2xl animate-fade-in text-center space-y-3.5">
+            <div id="modal-icon" class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl mx-auto flex items-center justify-center text-xl border border-amber-500/30">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <div>
+                <h4 id="modal-title" class="text-sm font-bold text-white mb-1">Peringatan</h4>
+                <p id="modal-message" class="text-xs text-slate-300 leading-relaxed">Pesan modal.</p>
+            </div>
+            <button onclick="closeModal()" class="w-full bg-brand-600 hover:bg-brand-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition">
+                Tutup & Mengerti
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="glass-panel border-t border-slate-800 text-center py-3 text-[11px] text-slate-400 mt-8">
+        <p>&copy; 2026 ArenaPredict.AI — Asisten Analisis Olahraga Pintar</p>
+    </footer>
+
+    <!-- JavaScript App Logic -->
+    <script>
+        let currentSport = 'Sepak Bola';
+
+        // Load saved API Key on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('arena_api_key');
+            const savedProvider = localStorage.getItem('arena_api_provider') || 'gemini';
+            document.getElementById('api-provider').value = savedProvider;
+            if(savedKey) {
+                document.getElementById('user-api-key').value = savedKey;
+                updateKeyStatusBadge(true);
+            } else {
+                updateKeyStatusBadge(false);
+            }
+        });
+
+        function toggleKeyModal() {
+            document.getElementById('api-modal').classList.toggle('hidden');
+        }
+
+        function togglePasswordVisibility() {
+            const keyInput = document.getElementById('user-api-key');
+            const eyeIcon = document.getElementById('eye-icon');
+            if(keyInput.type === 'password') {
+                keyInput.type = 'text';
+                eyeIcon.className = 'fa-solid fa-eye-slash';
+            } else {
+                keyInput.type = 'password';
+                eyeIcon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('user-api-key').value.trim();
+            const provider = document.getElementById('api-provider').value;
+            if(!key) {
+                showModal("API Key Kosong", "Silakan masukkan API Key yang valid.");
+                return;
+            }
+            localStorage.setItem('arena_api_key', key);
+            localStorage.setItem('arena_api_provider', provider);
+            updateKeyStatusBadge(true);
+            toggleKeyModal();
+            showModal("Berhasil Disimpan", "API Key berhasil tersimpan aman di peramban Anda.", "success");
+        }
+
+        function clearApiKey() {
+            localStorage.removeItem('arena_api_key');
+            document.getElementById('user-api-key').value = '';
+            updateKeyStatusBadge(false);
+            toggleKeyModal();
+            showModal("API Key Dihapus", "API Key telah dihapus dari peramban.", "success");
+        }
+
+        function updateKeyStatusBadge(isSet) {
+            const btn = document.getElementById('key-status-btn');
+            const text = document.getElementById('key-status-text');
+            if(isSet) {
+                btn.className = "text-xs bg-brand-500/10 text-brand-400 border border-brand-500/40 px-3 py-2 rounded-xl font-medium transition flex items-center space-x-2";
+                text.innerText = "API Key Aktif";
+            } else {
+                btn.className = "text-xs bg-slate-900 text-amber-400 border border-amber-500/40 px-3 py-2 rounded-xl font-medium transition flex items-center space-x-2";
+                text.innerText = "Set API Key";
+            }
+        }
+
+        function setSport(sportName) {
+            currentSport = sportName;
+            document.querySelectorAll('.sport-btn').forEach(btn => {
+                btn.className = "sport-btn p-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:border-slate-700 flex flex-col items-center justify-center space-y-1.5 transition font-medium text-xs";
+            });
+            
+            const activeBtn = document.getElementById(`sport-${sportName.replace(/\s+/g, '-')}`);
+            if(activeBtn) {
+                activeBtn.className = "sport-btn p-3 rounded-xl border border-brand-500 bg-brand-500/10 text-brand-300 flex flex-col items-center justify-center space-y-1.5 transition font-medium text-xs shadow-sm";
+            }
+            
+            document.getElementById('current-sport-badge').innerText = sportName;
+
+            const drawContainer = document.getElementById('container-draw');
+            if (sportName === 'Basket') {
+                drawContainer.style.display = 'none';
+            } else {
+                drawContainer.style.display = 'block';
+            }
+        }
+
+        function loadPreset(type) {
+            if(type === 'football') {
+                setSport('Sepak Bola');
+                document.getElementById('teamA').value = 'Real Madrid';
+                document.getElementById('teamB').value = 'Barcelona';
+                document.getElementById('matchLocation').value = 'Kandang Tim A';
+                document.getElementById('h2h').value = '3 Menang Real Madrid, 1 Seri, 1 Menang Barcelona';
+                document.getElementById('formA').value = 'M-M-M-S-M';
+                document.getElementById('formB').value = 'M-S-K-M-M';
+                document.getElementById('injuries').value = 'Gavi (Barcelona) absen, Courtois kembali fit';
+                document.getElementById('notes').value = 'El Clasico di Santiago Bernabeu, intensitas tinggi';
+            }
+        }
+
+        function showModal(title, message, type = 'warning') {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            const iconDiv = document.getElementById('modal-icon');
+            if(type === 'success') {
+                iconDiv.className = "w-12 h-12 bg-brand-500/20 text-brand-400 rounded-2xl mx-auto flex items-center justify-center text-xl border border-brand-500/30";
+                iconDiv.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            } else {
+                iconDiv.className = "w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl mx-auto flex items-center justify-center text-xl border border-amber-500/30";
+                iconDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+            }
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        async function analyzeWithAI() {
+            const teamA = document.getElementById('teamA').value.trim();
+            const teamB = document.getElementById('teamB').value.trim();
+            const location = document.getElementById('matchLocation').value;
+            const h2h = document.getElementById('h2h').value.trim();
+            const formA = document.getElementById('formA').value.trim();
+            const formB = document.getElementById('formB').value.trim();
+            const injuries = document.getElementById('injuries').value.trim();
+            const notes = document.getElementById('notes').value.trim();
+
+            // Strict Validation
+            if(!teamA || !teamB) {
+                showModal("Data Belum Lengkap", "Mohon isi nama Tim/Pemain A dan Tim/Pemain B agar analisis tidak spekulatif.");
+                return;
+            }
+
+            const apiKey = localStorage.getItem('arena_api_key');
+            const provider = localStorage.getItem('arena_api_provider') || 'gemini';
+
+            // Show Loading State
+            document.getElementById('result-placeholder').classList.add('hidden');
+            document.getElementById('result-container').classList.add('hidden');
+            document.getElementById('result-loading').classList.remove('hidden');
+
+            // Construct structured prompt
+            const systemPrompt = `Anda adalah seorang analis olahraga profesional bereputasi tinggi. Tugas Anda adalah menganalisis pertandingan olahraga dan memberikan estimasi skor serta peluang hasil pertandingan berdasarkan data realistis yang diberikan.
+Output HARUS berformat JSON murni tanpa markdown triple backticks.
+Format JSON harus persis seperti struktur ini:
+{
+  "score": "2 - 1",
+  "probA": 55,
+  "probDraw": 20,
+  "probB": 25,
+  "confidence": 80,
+  "keyFactors": [
+    "Faktor 1...",
+    "Faktor 2...",
+    "Faktor 3..."
+  ],
+  "narrative": "Analisis ringkas taktik dan kondisi kedua tim..."
+}`;
+
+            const userPrompt = `Analisis Pertandingan Olahraga:
+- Cabang Olahraga: ${currentSport}
+- Tim/Pemain A: ${teamA}
+- Tim/Pemain B: ${teamB}
+- Lokasi Pertandingan: ${location}
+- Rekor H2H: ${h2h || 'Tidak ada data'}
+- Performa 5 Laga Terakhir Tim A: ${formA || 'Tidak ada data'}
+- Performa 5 Laga Terakhir Tim B: ${formB || 'Tidak ada data'}
+- Kondisi Cedera/Pemain: ${injuries || 'Tidak ada catatan'}
+- Catatan Taktis Tambahan: ${notes || 'Tidak ada'}
+
+Berikan hasil estimasi objektif dan ilmiah dalam JSON murni. (Untuk Basket, probDraw diisi 0).`;
+
+            try {
+                let aiResult = null;
+
+                if (apiKey) {
+                    // Make direct call using user provided API key
+                    if (provider === 'gemini') {
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: userPrompt }] }],
+                                systemInstruction: { parts: [{ text: systemPrompt }] },
+                                generationConfig: { responseMimeType: "application/json" }
+                            })
+                        });
+                        const data = await response.json();
+                        const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        aiResult = JSON.parse(jsonText);
+                    } else { // OpenAI
+                        const apiUrl = `https://api.openai.com/v1/chat/completions`;
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: "gpt-4o-mini",
+                                response_format: { type: "json_object" },
+                                messages: [
+                                    { role: "system", content: systemPrompt },
+                                    { role: "user", content: userPrompt }
+                                ]
+                            })
+                        });
+                        const data = await response.json();
+                        aiResult = JSON.parse(data.choices[0].message.content);
+                    }
+                } else {
+                    // Fallback built-in API model integration if user hasn't set custom key yet
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=`;
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: userPrompt }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    });
+                    const data = await response.json();
+                    const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    aiResult = JSON.parse(jsonText);
+                }
+
+                renderResults(aiResult, teamA, teamB);
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('result-loading').classList.add('hidden');
+                document.getElementById('result-placeholder').classList.remove('hidden');
+                showModal("Gagal Mengontak AI", "Terjadi kesalahan saat memproses data analisis dengan API. Periksa API Key atau koneksi Anda.");
+            }
+        }
+
+        function renderResults(res, teamA, teamB) {
+            document.getElementById('result-loading').classList.add('hidden');
+            document.getElementById('result-container').classList.remove('hidden');
+
+            document.getElementById('res-sport-tag').innerText = currentSport;
+            document.getElementById('res-match-title').innerText = `${teamA} vs ${teamB}`;
+            document.getElementById('res-teamA-name').innerText = teamA;
+            document.getElementById('res-teamB-name').innerText = teamB;
+            document.getElementById('res-score').innerText = res.score || "1 - 0";
+
+            // Probabilities
+            const pA = res.probA || 50;
+            const pDraw = currentSport === 'Basket' ? 0 : (res.probDraw || 20);
+            const pB = res.probB || (100 - pA - pDraw);
+
+            document.getElementById('prob-val-A').innerText = pA + '%';
+            document.getElementById('bar-A').style.width = pA + '%';
+            document.getElementById('prob-label-A').innerText = `Menang ${teamA}`;
+
+            if(currentSport === 'Basket') {
+                document.getElementById('container-draw').style.display = 'none';
+            } else {
+                document.getElementById('container-draw').style.display = 'block';
+                document.getElementById('prob-val-Draw').innerText = pDraw + '%';
+                document.getElementById('bar-Draw').style.width = pDraw + '%';
+            }
+
+            document.getElementById('prob-val-B').innerText = pB + '%';
+            document.getElementById('bar-B').style.width = pB + '%';
+            document.getElementById('prob-label-B').innerText = `Menang ${teamB}`;
+
+            document.getElementById('confidence-badge').innerText = `Tingkat Keyakinan: ${res.confidence || 75}%`;
+
+            // Key Factors
+            const factorsList = document.getElementById('key-factors-list');
+            factorsList.innerHTML = '';
+            (res.keyFactors || []).forEach(factor => {
+                const li = document.createElement('li');
+                li.className = 'flex items-start';
+                li.innerHTML = `<i class="fa-solid fa-check text-brand-500 mt-0.5 mr-1.5 flex-shrink-0"></i><span>${factor}</span>`;
+                factorsList.appendChild(li);
+            });
+
+            // Narrative
+            document.getElementById('res-narrative').innerText = `"${res.narrative || 'Analisis menunjukkan persaingan ketat.'}"`;
+
+            if(window.innerWidth < 1024) {
+                document.getElementById('result-container').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('teamA').value = '';
+            document.getElementById('teamB').value = '';
+            document.getElementById('h2h').value = '';
+            document.getElementById('formA').value = '';
+            document.getElementById('formB').value = '';
+            document.getElementById('injuries').value = '';
+            document.getElementById('notes').value = '';
+            
+            document.getElementById('result-placeholder').classList.remove('hidden');
+            document.getElementById('result-loading').classList.add('hidden');
+            document.getElementById('result-container').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
+```
